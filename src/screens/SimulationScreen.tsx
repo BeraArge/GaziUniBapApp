@@ -1,6 +1,6 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
-import {ActivityIndicator, StyleSheet, Text, View} from 'react-native';
-import QuestionStep from '../components/steps/QuestionStep';
+import {ActivityIndicator, Alert, StyleSheet, Text, View} from 'react-native';
+import SceneStep from '../components/steps/SceneStep';
 import TableStep from '../components/steps/TableStep';
 import TextStep from '../components/steps/TextStep';
 import VideoStep from '../components/steps/VideoStep';
@@ -9,21 +9,25 @@ import ScreenContainer from '../components/ui/ScreenContainer';
 import {demoCase} from '../data/demoCase';
 import {MainScreenProps} from '../navigation/types';
 import {useAppDispatch, useAppSelector} from '../store/hooks';
-import {fetchQuestions} from '../store/questionsSlice';
+import {fetchQuestions, submitAnswers} from '../store/questionsSlice';
 import {colors, spacing} from '../theme/colors';
-import {Step} from '../types/simulation';
+import {AnswerRecord, Step} from '../types/simulation';
 
 export default function SimulationScreen({
   navigation,
 }: MainScreenProps<'Simulation'>) {
   const dispatch = useAppDispatch();
-  const {items, loading, error, loaded} = useAppSelector(s => s.questions);
+  const {items, meta, loading, error, loaded} = useAppSelector(
+    s => s.questions,
+  );
 
   const [index, setIndex] = useState(0);
-  // Bir soru adımında cevap verilip verilmediği — verilene kadar "İlerle" pasif.
-  const [answeredCurrent, setAnsweredCurrent] = useState(false);
   // Doğru sayısı (mutasyon için ref).
   const correctRef = useRef(0);
+  // Bu oturumda verilen cevaplar (part bitiminde toplu gönderilir).
+  const answersRef = useRef<AnswerRecord[]>([]);
+  // Devam (resume) konumlandırması yalnızca bir kez yapılır.
+  const positionedRef = useRef(false);
 
   // Açılışta soruları API'den çek.
   useEffect(() => {
@@ -36,30 +40,109 @@ export default function SimulationScreen({
   const steps: Step[] = useMemo(() => [...demoCase.steps, ...items], [items]);
   const totalQuestions = items.length;
 
-  const handleAnswered = (isCorrect: boolean) => {
-    if (isCorrect) {
-      correctRef.current += 1;
+  // Statik tanım adımlarının sayısı (sorular bunlardan sonra eklenir).
+  const staticCount = steps.length - totalQuestions;
+  const {partBreakQuestionCount, ilkPartTamamlandiMi, kalanSoruSayisi} = meta;
+
+  // Devam (resume) atlama miktarı (sorular arasında 0-based).
+  // Backend devam ederken `sorular`'ı yalnızca kalan sorularla döndürebilir;
+  // bu durumda totalQuestions == kalanSoruSayisi olur → offset 0 (listenin
+  // başından başla). Tüm soruları döndürürse offset = atlanacak soru sayısı.
+  const resumeOffset = ilkPartTamamlandiMi
+    ? Math.max(0, totalQuestions - (kalanSoruSayisi || totalQuestions))
+    : 0;
+
+  // Devam: ilk part tamamlandıysa statik adımları atlayıp doğrudan kalan ilk
+  // sorudan başla (bir kez).
+  useEffect(() => {
+    if (loaded && totalQuestions > 0 && !positionedRef.current) {
+      positionedRef.current = true;
+      if (ilkPartTamamlandiMi) {
+        setIndex(staticCount + resumeOffset);
+      }
     }
-    setAnsweredCurrent(true);
+  }, [loaded, totalQuestions, ilkPartTamamlandiMi, staticCount, resumeOffset]);
+
+  const goToResult = () => {
+    // replace: SimulationScreen (ve üstündeki SceneStep mod'u) kaldırılır,
+    // böylece Result ekranı görünür. navigate kullanılırsa modal üstte kalır.
+    navigation.replace('Result', {
+      correct: correctRef.current,
+      total: totalQuestions,
+    });
   };
 
   const goNext = () => {
     if (index === steps.length - 1) {
-      navigation.replace('Result', {
-        correct: correctRef.current,
-        total: totalQuestions,
-      });
+      goToResult();
       return;
     }
     setIndex(i => i + 1);
-    setAnsweredCurrent(false);
   };
 
   const step = steps[index];
   const isLast = index === steps.length - 1;
+  const isQuestion = step.type === 'question';
+
+  // O anki sorunun 0-based sırası (sorular arasında).
+  const questionOrdinal = index - staticCount;
+  // Part-arası sorusu: ilk part'ın son sorusu (count → 0-based index).
+  const isBreakQuestion =
+    partBreakQuestionCount > 0 &&
+    questionOrdinal === partBreakQuestionCount - 1 &&
+    !ilkPartTamamlandiMi;
 
   // Tanım adımlarının sonuna gelindi ama sorular henüz hazır değil.
   const awaitingQuestions = isLast && !loaded;
+
+  // Soru adımı: tam ekran video + modal soru olarak sunulur (SceneStep).
+  const handleSceneNext = async (answer: AnswerRecord) => {
+    if (answer.isCorrect) {
+      correctRef.current += 1;
+    }
+    answersRef.current.push(answer);
+
+    // Part 1'in son sorusu işaretlendi → ara vermek isteyip istemediğini sor.
+    // Sadece ARA VERİRSE part 1 cevapları ayrı gönderilir. Devam ederse hiçbir
+    // şey gönderilmez; tüm cevaplar en sonda tek seferde gönderilir.
+    if (isBreakQuestion) {
+      Alert.alert(
+        'Ara',
+        'Ara vermek ister misiniz?',
+        [
+          {
+            text: 'Hayır',
+            style: 'cancel',
+            onPress: () => goNext(),
+          },
+          {
+            text: 'Evet',
+            onPress: () => {
+              dispatch(submitAnswers({cevaplar: answersRef.current.slice()}));
+              navigation.replace('Break');
+            },
+          },
+        ],
+        {cancelable: false},
+      );
+      return;
+    }
+
+    // Simülasyonun son sorusu → bu oturumdaki TÜM cevapları tek seferde gönder.
+    if (isLast) {
+      // Skor/sıralama güncel olsun diye gönderimi bekle, sonra sonuca geç.
+      await dispatch(submitAnswers({cevaplar: answersRef.current.slice()}));
+      goToResult();
+      return;
+    }
+
+    goNext();
+  };
+
+  // Görüntülenecek soru numarası (oturum başlangıcından itibaren) ve toplam.
+  const sessionStartOrdinal = resumeOffset;
+  const displayQuestionNo = questionOrdinal - sessionStartOrdinal + 1;
+  const displayTotal = kalanSoruSayisi || totalQuestions;
 
   const renderStep = () => {
     switch (step.type) {
@@ -70,17 +153,26 @@ export default function SimulationScreen({
       case 'video':
         return <VideoStep step={step} />;
       case 'question':
-        // key={index}: her soruda bileşen sıfırdan oluşur, böylece önceki
-        // sorunun seçimi/geri bildirimi sıfırlanır.
+        // key={index}: her soruda bileşen (ve video) sıfırdan oluşur.
         return (
-          <QuestionStep key={index} step={step} onAnswered={handleAnswered} />
+          <SceneStep
+            key={index}
+            step={step}
+            questionNo={displayQuestionNo}
+            totalQuestions={displayTotal}
+            onNext={handleSceneNext}
+          />
         );
     }
   };
 
-  // Soru adımında cevap verilmeden ilerlenemez; sorular yüklenmeden de bitirilemez.
-  const nextDisabled =
-    (step.type === 'question' && !answeredCurrent) || awaitingQuestions;
+  // Soru adımı tüm akışı kendi (modal) içinde yönetir; normal sayfa/footer gizlenir.
+  if (isQuestion) {
+    return renderStep();
+  }
+
+  // Sorular yüklenmeden son tanım adımından ilerlenemez.
+  const nextDisabled = awaitingQuestions;
   const nextTitle = isLast ? 'Bitir ve Sonucu Gör' : 'İlerle';
 
   return (

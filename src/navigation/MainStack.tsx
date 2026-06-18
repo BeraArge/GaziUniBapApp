@@ -2,6 +2,7 @@ import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import React from 'react';
 import {Pressable, Text} from 'react-native';
 import {useAuth} from '../store/useAuth';
+import BreakScreen from '../screens/BreakScreen';
 import PreBriefingScreen from '../screens/PreBriefingScreen';
 import ResultScreen from '../screens/ResultScreen';
 import SimulationScreen from '../screens/SimulationScreen';
@@ -45,6 +46,11 @@ export default function MainStack() {
         name="Result"
         component={ResultScreen}
         options={{title: 'Sonuç', headerBackVisible: false}}
+      />
+      <Stack.Screen
+        name="Break"
+        component={BreakScreen}
+        options={{title: 'Ara', headerBackVisible: false}}
       />
     </Stack.Navigator>
   );

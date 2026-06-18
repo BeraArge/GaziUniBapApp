@@ -9,7 +9,7 @@ import {AuthScreenProps} from '../../navigation/types';
 
 export default function LoginScreen({navigation}: AuthScreenProps<'Login'>) {
   const {login, loading, error} = useAuth();
-  const [studentNo, setStudentNo] = useState('02192345896');
+  const [studentNo, setStudentNo] = useState('123456');
   const [password, setPassword] = useState('123123');
 
   // Hata state'e düştüğünde kullanıcıya göster. Başarıda token set olur ve

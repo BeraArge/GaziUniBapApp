@@ -8,7 +8,8 @@ export type AuthStackParamList = {
 export type MainStackParamList = {
   PreBriefing: undefined;
   Simulation: undefined;
-  Result: {correct: number; total: number};
+  Result: {correct: number; total: number; note?: string};
+  Break: undefined;
 };
 
 export type AuthScreenProps<T extends keyof AuthStackParamList> =

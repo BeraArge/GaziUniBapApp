@@ -2,9 +2,9 @@
  * Uygulama renk paleti. Sağlık/hemşirelik temasına uygun sakin tonlar.
  */
 export const colors = {
-  primary: '#0E7C7B', // teal — sağlık teması
-  primaryDark: '#0A5E5D',
-  accent: '#17A2B8',
+  primary: '#F97316', // canlı turuncu
+  primaryDark: '#C2410C',
+  accent: '#FB923C',
   background: '#F4F7F8',
   surface: '#FFFFFF',
   border: '#D9E2E5',

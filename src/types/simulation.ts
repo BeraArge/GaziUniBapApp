@@ -36,10 +36,48 @@ export type VideoStep = {
 
 export type QuestionStep = {
   type: 'question';
+  id: number; // backend soruId
   prompt: string;
   options: string[];
-  correctIndex: number;
+  optionKeys: string[]; // options ile paralel: ['A','B',...]
+  correctIndex: number | null; // null => doğru cevap bilinmiyor
   explanation?: string;
+  videoUrl?: string; // soru öncesi izlenecek tam ekran sahne videosu
+  videoTranscript?: string; // "Metni Oku" ile gösterilecek metin
+};
+
+/** Bir soruya verilen cevabın backend'e gönderilecek kaydı. */
+export type AnswerRecord = {
+  soruId: number;
+  verilenCevap: string; // seçilen şıkkın key'i ('A'..'E')
+  cevaplamaSuresiSaniye: number;
+  aciklamaOkumaSuresiSaniye: number;
+  isCorrect: boolean;
+};
+
+/** Sıralama (leaderboard) satırı. */
+export type LeaderboardEntry = {
+  userId: number;
+  fullName: string | null;
+  totalScore: number;
+  rank: number;
+  isCurrentUser: boolean;
+};
+
+/** GetCompetitionHome yanıtı: kullanıcının skoru + sıralama. */
+export type CompetitionHome = {
+  userId: number;
+  fullName: string | null;
+  totalScore: number;
+  rank: number;
+  totalParticipantCount: number;
+  totalAnswerCount: number;
+  correctCount: number;
+  wrongCount: number;
+  successRate: number;
+  statusMessage: string;
+  leaderboard: LeaderboardEntry[];
+  nearbyUsers: LeaderboardEntry[];
 };
 
 export type Step = TextStep | TableStep | VideoStep | QuestionStep;

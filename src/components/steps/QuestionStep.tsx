@@ -6,26 +6,34 @@ import Card from '../ui/Card';
 
 type Props = {
   step: QuestionStepType;
-  /** Cevap verildiğinde doğru mu bilgisini üst ekrana iletir. */
-  onAnswered: (isCorrect: boolean) => void;
+  /** Cevap verildiğinde doğru mu + seçilen şık indeksini üst ekrana iletir. */
+  onAnswered: (isCorrect: boolean, selectedIndex: number) => void;
 };
 
 export default function QuestionStep({step, onAnswered}: Props) {
   const [selected, setSelected] = useState<number | null>(null);
   const answered = selected !== null;
-  const isCorrect = selected === step.correctIndex;
+  // Doğru cevap bilinmiyorsa (backend henüz doldurmadıysa) doğru/yanlış gösterilmez.
+  const hasAnswer = step.correctIndex != null;
+  const isCorrect = hasAnswer && selected === step.correctIndex;
 
   const handleSelect = (index: number) => {
     if (answered) {
       return; // tek cevap hakkı
     }
     setSelected(index);
-    onAnswered(index === step.correctIndex);
+    onAnswered(hasAnswer && index === step.correctIndex, index);
   };
 
   const optionStyle = (index: number) => {
     if (!answered) {
       return styles.option;
+    }
+    // Doğru cevap bilinmiyorsa sadece seçileni vurgula.
+    if (!hasAnswer) {
+      return index === selected
+        ? [styles.option, styles.selectedOption]
+        : [styles.option, styles.fadedOption];
     }
     if (index === step.correctIndex) {
       return [styles.option, styles.correctOption];
@@ -49,17 +57,17 @@ export default function QuestionStep({step, onAnswered}: Props) {
             style={optionStyle(i)}
             disabled={answered}>
             <Text style={styles.optionText}>{opt}</Text>
-            {answered && i === step.correctIndex && (
+            {answered && hasAnswer && i === step.correctIndex && (
               <Text style={styles.mark}>✓</Text>
             )}
-            {answered && i === selected && i !== step.correctIndex && (
+            {answered && hasAnswer && i === selected && i !== step.correctIndex && (
               <Text style={styles.mark}>✕</Text>
             )}
           </Pressable>
         ))}
       </View>
 
-      {answered && (
+      {answered && hasAnswer && (
         <Card
           style={
             isCorrect ? styles.feedbackCorrect : styles.feedbackWrong
@@ -71,9 +79,18 @@ export default function QuestionStep({step, onAnswered}: Props) {
             ]}>
             {isCorrect ? '✓ Doğru!' : '✕ Yanlış'}
           </Text>
-          {step.explanation ? (
-            <Text style={styles.feedbackText}>{step.explanation}</Text>
+          {/* Açıklama (videoTranscript) yalnızca YANLIŞ cevapta gösterilir. */}
+          {!isCorrect && step.videoTranscript ? (
+            <Text style={styles.feedbackText}>{step.videoTranscript}</Text>
           ) : null}
+        </Card>
+      )}
+
+      {answered && !hasAnswer && (
+        <Card style={styles.feedbackNeutral}>
+          <Text style={styles.feedbackNeutralText}>
+            Cevabınız kaydedildi.
+          </Text>
         </Card>
       )}
     </View>
@@ -118,6 +135,10 @@ const styles = StyleSheet.create({
     borderColor: colors.danger,
     backgroundColor: colors.dangerBg,
   },
+  selectedOption: {
+    borderColor: colors.primary,
+    backgroundColor: colors.surface,
+  },
   fadedOption: {
     opacity: 0.55,
   },
@@ -149,5 +170,15 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     color: colors.text,
+  },
+  feedbackNeutral: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+  },
+  feedbackNeutralText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.textMuted,
+    fontWeight: '600',
   },
 });

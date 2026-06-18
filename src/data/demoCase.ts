@@ -236,16 +236,7 @@ export const demoCase: Case = {
         'ile birlikte, 2 cm’den büyük, eritemli ve deri altı dokulara uzanan lokal enfeksiyon.',
     },
 
-    // 9) Senaryo sahnesi (placeholder video) — Merve Hemşire'nin anlatımı
-    {
-      type: 'video',
-      title: 'Senaryo Sahnesi',
-      videoUrl: undefined,
-      transcript:
-        'Merve Hemşire vakayı sözlü olarak aktarır. Gerçek video eklenince bu metin ' +
-        '"Metni Oku" ile gösterilmeye devam edebilir.',
-    },
-
-    // Sorular buradan sonra API'den (/api/soru/GetAllSorus) eklenir.
+    // Sorular buradan sonra API'den (/api/soru/GetAllSorus) eklenir. Her soru
+    // kendi sahne videosuyla (videoPath) tam ekran sunulur (bkz. SceneStep).
   ],
 };
