@@ -1,2 +1,2 @@
 # GaziUniBapApp
-Merve Hoca Mobil
+Merve Kırşan Mobil
