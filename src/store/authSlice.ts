@@ -8,12 +8,13 @@ export interface LoginPayload {
 }
 
 export interface RegisterPayload {
-  name: string;
-  surname: string;
-  ogrenciNo: string;
-  phone: string;
-  password: string;
-  passwordRepeat: string;
+  UserName: string;
+  Name: string;
+  Surname: string;
+  OgrenciNo: string;
+  Phone: string;
+  Password: string;
+  PasswordRepeat: string;
 }
 
 interface AuthState {
@@ -60,13 +61,15 @@ export const register = createAsyncThunk(
   'auth/register',
   async (payload: RegisterPayload, {rejectWithValue}) => {
     try {
+      console.log('Attempting registration with payload:', payload);  
       const response = await axios.post(`${API_URL}/api/user/Add`, {
-        Name: payload.name,
-        Surname: payload.surname,
-        OgrenciNo: payload.ogrenciNo,
-        Phone: payload.phone,
-        Password: payload.password,
-        PasswordRepeat: payload.passwordRepeat,
+        UserName: payload.UserName,
+        Name: payload.Name,
+        Surname: payload.Surname,
+        OgrenciNo: payload.OgrenciNo,
+        Phone: payload.Phone,
+        Password: payload.Password,
+        PasswordRepeat: payload.PasswordRepeat,
       });
       console.log('register response:', response.data);
       return response.data;
@@ -75,6 +78,33 @@ export const register = createAsyncThunk(
         return error.response.data;
       }
       const message = error?.message || 'Kayıt olurken bir hata oluştu';
+      return rejectWithValue(message);
+    }
+  },
+);
+
+/**
+ * Şifremi unuttum: telefon numarasıyla sıfırlama talebi gönderir.
+ * POST /api/auth/sifremi-unuttum  body: { phone }
+ * Ortak login/register loading'ini etkilememek için ekran kendi yerel
+ * loading'ini tutar; burada yalnızca isteği atıp yanıtı döndürürüz.
+ */
+export const forgotPassword = createAsyncThunk(
+  'auth/forgotPassword',
+  async (payload: {phone: string}, {rejectWithValue}) => {
+    try {
+      console.log('Attempting forgotPassword with payload:', payload);
+      const response = await axios.post(
+        `${API_URL}/api/auth/sifremi-unuttum`,
+        {phone: payload.phone},
+      );
+      console.log('forgotPassword response:', response.data);
+      return response.data;
+    } catch (error: any) {
+      if (error?.response?.data) {
+        return rejectWithValue(error.response.data);
+      }
+      const message = error?.message || 'İşlem sırasında bir hata oluştu';
       return rejectWithValue(message);
     }
   },

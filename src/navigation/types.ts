@@ -3,12 +3,14 @@ import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
+  ForgotPassword: undefined;
 };
 
 export type MainStackParamList = {
   PreBriefing: undefined;
   Simulation: undefined;
   Result: {correct: number; total: number; note?: string};
+  Debriefing: undefined;
   Break: undefined;
 };
 

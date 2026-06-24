@@ -24,6 +24,12 @@ interface QuestionsState {
   competition: CompetitionHome | null;
   competitionLoading: boolean;
   competitionError: string | null;
+  // Öğrenci ön bilgilendirme metni (API'den dinamik çekilir).
+  preBriefingTitle: string | null;
+  preBriefingText: string | null;
+  preBriefingLoading: boolean;
+  preBriefingLoaded: boolean;
+  preBriefingError: string | null;
 }
 
 const initialMeta: QuestionsMeta = {
@@ -46,6 +52,11 @@ const initialState: QuestionsState = {
   competition: null,
   competitionLoading: false,
   competitionError: null,
+  preBriefingTitle: null,
+  preBriefingText: null,
+  preBriefingLoading: false,
+  preBriefingLoaded: false,
+  preBriefingError: null,
 };
 function mapApiQuestion(q: any): QuestionStep {
   const cevaplar: any[] = Array.isArray(q.cevaplar) ? q.cevaplar : [];
@@ -212,6 +223,137 @@ export const fetchCompetitionHome = createAsyncThunk<
   }
 });
 
+/**
+ * Backend'den gelen ön bilgilendirme içeriği HTML'dir (CKEditor çıktısı).
+ * RN'de HTML render kütüphanesi olmadığından, yapıyı koruyarak okunabilir
+ * düz metne çevirir: <li> → "•", paragraf/satır sonları → boş satır,
+ * HTML entity'leri (&ouml; vb.) çözülür, kalan etiketler temizlenir.
+ */
+function htmlToPlainText(html: string): string {
+  let s = html;
+  s = s.replace(/<li[^>]*>/gi, '\n• ');
+  s = s.replace(/<\/(p|div|li|ul|ol|h[1-6])>/gi, '\n');
+  s = s.replace(/<br\s*\/?>/gi, '\n');
+  s = s.replace(/<[^>]+>/g, '');
+  const entities: Record<string, string> = {
+    '&ouml;': 'ö', '&Ouml;': 'Ö', '&uuml;': 'ü', '&Uuml;': 'Ü',
+    '&ccedil;': 'ç', '&Ccedil;': 'Ç', '&nbsp;': ' ', '&amp;': '&',
+    '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&apos;': "'",
+    '&rsquo;': '’', '&lsquo;': '‘', '&ldquo;': '“', '&rdquo;': '”',
+    '&hellip;': '…', '&ndash;': '–', '&mdash;': '—',
+  };
+  s = s.replace(/&[a-zA-Z]+;|&#\d+;/g, m => entities[m] ?? m);
+  s = s.replace(/[ \t]+/g, ' ');
+  s = s.replace(/\n{3,}/g, '\n\n');
+  return s.trim();
+}
+
+/**
+ * Öğrenci ön bilgilendirme metnini backend'den çeker:
+ * GET /api/onBilgilendirme/GetOnBilgilendirmeForMobile
+ */
+export const fetchPreBriefing = createAsyncThunk<
+  {title: string | null; text: string},
+  void,
+  {rejectValue: string}
+>('questions/preBriefing', async (_, {getState, rejectWithValue}) => {
+  try {
+    const auth = (getState() as {auth: {token: string | null; user: any}}).auth;
+    const token = auth.token;
+
+    const url = `${API_URL}/api/onBilgilendirme/GetOnBilgilendirmeForMobile`;
+
+    const response = await axios.get(url, {
+      timeout: 15000,
+      headers: token ? {Authorization: `Bearer ${token}`} : undefined,
+    });
+    console.log('GetOnBilgilendirmeForMobile response:', response.data);
+
+    const payload = response.data;
+   
+    // Yanıt zarfı: { isSuccess, data: {...} } ya da doğrudan nesne/dizi.
+    let data = payload?.data ?? payload;
+    if (Array.isArray(data)) {
+      data = data[0] ?? {};
+    }
+
+    // Metin alanı backend'de farklı adlarla gelebilir → dayanıklı seç.
+    const text =
+      data?.metin ??
+      data?.icerik ??
+      data?.aciklama ??
+      data?.onBilgilendirmeMetni ??
+      data?.text ??
+      '';
+    const title = data?.baslik ?? data?.title ?? null;
+
+    if (!text) {
+      return rejectWithValue('Ön bilgilendirme metni bulunamadı');
+    }
+
+    return {title, text: htmlToPlainText(String(text))};
+  } catch (error: any) {
+    console.log(
+      'GetOnBilgilendirme HATA:',
+      error?.response?.status,
+      error?.message,
+      error?.response?.data,
+    );
+    const message =
+      error?.response?.data?.message ??
+      error?.message ??
+      'Ön bilgilendirme alınırken bir hata oluştu';
+    return rejectWithValue(message);
+  }
+});
+
+export interface CozumlemeSoruCevap {
+  soru: string;
+  cevap: string;
+}
+
+/**
+ * Çözümleme (debriefing) oturumunda bir aşamanın soru-cevaplarını kaydeder:
+ * POST /api/cozumlemeSoruUser/AddCozumlemeCevap
+ */
+export const submitCozumlemeCevap = createAsyncThunk<
+  any,
+  {asama: string; soruCevap: CozumlemeSoruCevap[]},
+  {rejectValue: string}
+>(
+  'questions/cozumleme',
+  async ({asama, soruCevap}, {getState, rejectWithValue}) => {
+    try {
+      const auth = (getState() as {auth: {token: string | null; user: any}})
+        .auth;
+      const token = auth.token;
+      const userId = auth.user?.id ?? null;
+
+      const body = {userId, asama, soruCevap};
+      console.log('AddCozumlemeCevap body:', body);
+
+      const response = await axios.post(
+        `${API_URL}/api/cozumlemeSoruUser/AddCozumlemeCevap`,
+        body,
+        {headers: token ? {Authorization: `Bearer ${token}`} : undefined},
+      );
+      console.log('AddCozumlemeCevap response:', response.data);
+
+      const payload = response.data;
+      if (payload?.isSuccess === false) {
+        return rejectWithValue(payload.message ?? 'Cevaplar kaydedilemedi');
+      }
+      return payload;
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ??
+        error?.message ??
+        'Çözümleme cevapları kaydedilirken bir hata oluştu';
+      return rejectWithValue(message);
+    }
+  },
+);
+
 const questionsSlice = createSlice({
   name: 'questions',
   initialState,
@@ -256,6 +398,21 @@ const questionsSlice = createSlice({
       .addCase(fetchCompetitionHome.rejected, (state, action) => {
         state.competitionLoading = false;
         state.competitionError = action.payload ?? 'Sonuçlar alınamadı';
+      })
+
+      .addCase(fetchPreBriefing.pending, state => {
+        state.preBriefingLoading = true;
+        state.preBriefingError = null;
+      })
+      .addCase(fetchPreBriefing.fulfilled, (state, action) => {
+        state.preBriefingLoading = false;
+        state.preBriefingLoaded = true;
+        state.preBriefingTitle = action.payload.title;
+        state.preBriefingText = action.payload.text;
+      })
+      .addCase(fetchPreBriefing.rejected, (state, action) => {
+        state.preBriefingLoading = false;
+        state.preBriefingError = action.payload ?? 'Ön bilgilendirme alınamadı';
       })
 
       // Çıkış yapılınca tüm soru/ilerleme/sonuç durumunu sıfırla; bir sonraki

@@ -10,7 +10,7 @@ import {Case} from '../types/simulation';
  */
 export const demoCase: Case = {
   id: 'vaka-1',
-  title: 'Vaka 1 — Diyabetik Ayak',
+  title: 'Vaka ',
   preBriefing:
     'Bu simülasyon, sizlerin hasta güvenliği yetkinliklerine ilişkin öz değerlendirme ' +
     'düzeylerinizi geliştirmeyi amaçlamaktadır. Senaryoda yer alan sahneler, gerçek klinik ' +

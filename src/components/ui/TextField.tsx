@@ -9,13 +9,13 @@ import {
 import {colors, radius, spacing} from '../../theme/colors';
 
 type Props = TextInputProps & {
-  label: string;
+  label?: string;
 };
 
 export default function TextField({label, style, ...rest}: Props) {
   return (
     <View style={styles.wrap}>
-      <Text style={styles.label}>{label}</Text>
+      {label ? <Text style={styles.label}>{label}</Text> : null}
       <TextInput
         style={[styles.input, style]}
         placeholderTextColor={colors.textMuted}

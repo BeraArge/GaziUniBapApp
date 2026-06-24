@@ -1,5 +1,5 @@
-import React, {useEffect} from 'react';
-import {ActivityIndicator, StyleSheet, Text, View} from 'react-native';
+import React, {useEffect, useRef} from 'react';
+import {ActivityIndicator, Alert, StyleSheet, Text, View} from 'react-native';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import ScreenContainer from '../components/ui/ScreenContainer';
@@ -17,17 +17,34 @@ function entryName(e: LeaderboardEntry): string {
   return e.isCurrentUser ? 'Siz' : `Öğrenci #${e.userId}`;
 }
 
-export default function ResultScreen({route}: MainScreenProps<'Result'>) {
+export default function ResultScreen({
+  navigation,
+  route,
+}: MainScreenProps<'Result'>) {
   const dispatch = useAppDispatch();
   const {logout} = useAuth();
   const note = route.params?.note;
   const {competition, competitionLoading, competitionError} = useAppSelector(
     s => s.questions,
   );
+  const notifiedRef = useRef(false);
 
   useEffect(() => {
     dispatch(fetchCompetitionHome());
   }, [dispatch]);
+
+  // Simülasyon sonu bildirimi (yalnızca gerçekten tamamlanan akışta, bir kez).
+  useEffect(() => {
+    if (note || notifiedRef.current) {
+      return;
+    }
+    notifiedRef.current = true;
+    Alert.alert(
+      'Simülasyon Sona Erdi',
+      'Sevgili öğrenciler,\nSimülasyon uygulaması sona ermiştir. Bu simülasyona gönüllü olarak katılım sağladığınız için her birinize içtenlikle teşekkür ederiz.',
+      [{text: 'Devam'}],
+    );
+  }, [note]);
 
   if (competitionLoading && !competition) {
     return (
@@ -61,7 +78,21 @@ export default function ResultScreen({route}: MainScreenProps<'Result'>) {
   return (
     <ScreenContainer
       contentStyle={styles.content}
-      footer={<Button title="Çıkış Yap" onPress={logout} />}>
+      footer={
+        <View style={styles.footer}>
+          {!note ? (
+            <Button
+              title="Çözümleme Oturumuna Geç"
+              onPress={() => navigation.navigate('Debriefing')}
+            />
+          ) : null}
+          <Button
+            title="Çıkış Yap"
+            variant={note ? 'primary' : 'outline'}
+            onPress={logout}
+          />
+        </View>
+      }>
       <View style={styles.center}>
         <Text style={styles.emoji}>{passed ? '🎉' : '📚'}</Text>
         <Text style={styles.title}>Simülasyon Tamamlandı</Text>
@@ -145,6 +176,9 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     gap: spacing.lg,
+  },
+  footer: {
+    gap: spacing.sm,
   },
   centerContent: {
     flexGrow: 1,

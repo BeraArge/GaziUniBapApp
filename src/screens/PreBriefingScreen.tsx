@@ -7,7 +7,7 @@ import {useAuth} from '../store/useAuth';
 import {demoCase} from '../data/demoCase';
 import {MainScreenProps} from '../navigation/types';
 import {useAppDispatch, useAppSelector} from '../store/hooks';
-import {fetchQuestions} from '../store/questionsSlice';
+import {fetchPreBriefing, fetchQuestions} from '../store/questionsSlice';
 import {colors, spacing} from '../theme/colors';
 
 export default function PreBriefingScreen({
@@ -15,15 +15,30 @@ export default function PreBriefingScreen({
 }: MainScreenProps<'PreBriefing'>) {
   const {user} = useAuth();
   const dispatch = useAppDispatch();
-  const {loaded, error, meta} = useAppSelector(s => s.questions);
+  const {
+    loaded,
+    error,
+    meta,
+    preBriefingText,
+    preBriefingTitle,
+    preBriefingLoaded,
+    preBriefingLoading,
+  } = useAppSelector(s => s.questions);
+  // preBriefingLoading sadece tekrar istek atmayı engellemek için kullanılır.
   const redirectedRef = useRef(false);
 
-  // Girişte soruları çek.
+  // Girişte soruları ve ön bilgilendirme metnini çek.
   useEffect(() => {
     if (!loaded) {
       dispatch(fetchQuestions());
     }
   }, [dispatch, loaded]);
+
+  useEffect(() => {
+    if (!preBriefingLoaded && !preBriefingLoading) {
+      dispatch(fetchPreBriefing());
+    }
+  }, [dispatch, preBriefingLoaded, preBriefingLoading]);
 
   // Simülasyon daha önce tamamlandıysa (ya da backend "tekrar başlayamazsınız"
   // diye reddettiyse) hiç başlatma; mesaj + skor için doğrudan Sonuç'a git.
@@ -38,7 +53,9 @@ export default function PreBriefingScreen({
     }
   }, [blockedNote, navigation]);
 
-  // Sorular yükleniyor / engellenmiş kullanıcı Sonuç'a yönlendiriliyor → bekleme.
+  // Sadece sorular yüklenirken / engellenmiş kullanıcı Sonuç'a yönlendirilirken
+  // bekle. Ön bilgilendirme isteği ekranı KİLİTLEMEZ: gelene kadar statik metin
+  // gösterilir, API yanıtı gelince güncellenir (istek takılırsa ekran donmaz).
   if (!loaded || blockedNote) {
     return (
       <ScreenContainer contentStyle={styles.centerContent}>
@@ -66,8 +83,12 @@ export default function PreBriefingScreen({
       </View>
 
       <Card>
-        <Text style={styles.sectionLabel}>ÖN BİLGİLENDİRME</Text>
-        <Text style={styles.body}>{demoCase.preBriefing}</Text>
+        <Text style={styles.sectionLabel}>
+          {preBriefingTitle ?? 'ÖN BİLGİLENDİRME'}
+        </Text>
+        <Text style={styles.body}>
+          {preBriefingText ?? demoCase.preBriefing}
+        </Text>
       </Card>
     </ScreenContainer>
   );

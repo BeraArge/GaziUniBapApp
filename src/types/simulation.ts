@@ -1,8 +1,3 @@
-/**
- * Vaka simülasyonu için veri tipleri.
- * Bir vaka (Case), sıralı adımlardan (Step) oluşur. SimulationScreen bu adımları
- * tipine göre uygun bileşene yönlendirerek sırayla gösterir.
- */
 
 export type PatientInfo = {
   fullName: string; // Ad Soyad

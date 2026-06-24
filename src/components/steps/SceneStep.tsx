@@ -113,11 +113,7 @@ export default function SceneStep({
                   {showTranscript ? '📕  Metni Gizle' : '📖  Metni Oku'}
                 </Text>
               </Pressable>
-              <Pressable
-                onPress={() => setPhase('question')}
-                style={styles.pillBtn}>
-                <Text style={styles.pillText}>Soruyu Göster ›</Text>
-              </Pressable>
+             
             </View>
 
             {showTranscript && step.videoTranscript ? (

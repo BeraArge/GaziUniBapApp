@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react';
-import {Alert, StyleSheet, Text, View} from 'react-native';
+import {Alert, Image, StyleSheet, Text, View} from 'react-native';
 import Button from '../../components/ui/Button';
 import ScreenContainer from '../../components/ui/ScreenContainer';
 import TextField from '../../components/ui/TextField';
@@ -11,6 +11,7 @@ export default function RegisterScreen({
   navigation,
 }: AuthScreenProps<'Register'>) {
   const {register, loading, error} = useAuth();
+  const [userName, setUserName] = useState('');
   const [name, setName] = useState('');
   const [surname, setSurname] = useState('');
   const [studentNo, setStudentNo] = useState('');
@@ -26,6 +27,7 @@ export default function RegisterScreen({
 
   const onSubmit = async () => {
     if (
+      !userName.trim() ||
       !name.trim() ||
       !surname.trim() ||
       !studentNo.trim() ||
@@ -45,12 +47,13 @@ export default function RegisterScreen({
     }
 
     const result: any = await register({
-      name,
-      surname,
-      ogrenciNo: studentNo,
-      phone,
-      password,
-      passwordRepeat: confirm,
+      UserName: userName,
+      Name: name,
+      Surname: surname,
+      OgrenciNo: studentNo,
+      Phone: phone,
+      Password: password,
+      PasswordRepeat: confirm,
     });
 
     // Başarılı kayıt (ağ hatası yok ve isSuccess !== false) -> Giriş ekranına dön.
@@ -66,12 +69,24 @@ export default function RegisterScreen({
   return (
     <ScreenContainer contentStyle={styles.content}>
       <View style={styles.header}>
+        <Image
+          source={require('../../logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
         <Text style={styles.title}>Yeni Hesap Oluştur</Text>
         <Text style={styles.subtitle}>
           Simülasyona başlamak için kayıt olun.
         </Text>
       </View>
 
+      <TextField
+        label="Kullanıcı Adı"
+        value={userName}
+        onChangeText={setUserName}
+        autoCapitalize="none"
+        placeholder="örn. esracabas"
+      />
       <TextField
         label="Ad"
         value={name}
@@ -134,6 +149,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.md,
     gap: spacing.xs,
+  },
+  logo: {
+    width: 96,
+    height: 96,
   },
   title: {
     fontSize: 24,

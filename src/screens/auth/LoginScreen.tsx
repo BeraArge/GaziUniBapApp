@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react';
-import {Alert, StyleSheet, Text, View} from 'react-native';
+import {Alert, Image, StyleSheet, Text, View} from 'react-native';
 import Button from '../../components/ui/Button';
 import ScreenContainer from '../../components/ui/ScreenContainer';
 import TextField from '../../components/ui/TextField';
@@ -9,8 +9,8 @@ import {AuthScreenProps} from '../../navigation/types';
 
 export default function LoginScreen({navigation}: AuthScreenProps<'Login'>) {
   const {login, loading, error} = useAuth();
-  const [studentNo, setStudentNo] = useState('123456');
-  const [password, setPassword] = useState('123123');
+  const [studentNo, setStudentNo] = useState('1234');
+  const [password, setPassword] = useState('123123Aa');
 
   // Hata state'e düştüğünde kullanıcıya göster. Başarıda token set olur ve
   // RootNavigator otomatik olarak ana akışa geçer.
@@ -31,8 +31,12 @@ export default function LoginScreen({navigation}: AuthScreenProps<'Login'>) {
   return (
     <ScreenContainer contentStyle={styles.content}>
       <View style={styles.header}>
-        <Text style={styles.logo}>🩺</Text>
-        <Text style={styles.title}>Hemşirelik Simülasyonu</Text>
+        <Image
+          source={require('../../logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+        <Text style={styles.title}>GüvenSim</Text>
         <Text style={styles.subtitle}>
           Devam etmek için hesabınıza giriş yapın.
         </Text>
@@ -56,6 +60,11 @@ export default function LoginScreen({navigation}: AuthScreenProps<'Login'>) {
 
       <Button title="Giriş Yap" onPress={onSubmit} loading={loading} />
       <Button
+        title="Şifremi Unuttum"
+        variant="outline"
+        onPress={() => navigation.navigate('ForgotPassword')}
+      />
+      <Button
         title="Hesabın yok mu? Kayıt Ol"
         variant="outline"
         onPress={() => navigation.navigate('Register')}
@@ -76,7 +85,8 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   logo: {
-    fontSize: 48,
+    width: 120,
+    height: 120,
   },
   title: {
     fontSize: 24,

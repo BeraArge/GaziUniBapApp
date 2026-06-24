@@ -3,6 +3,7 @@ import React from 'react';
 import {Pressable, Text} from 'react-native';
 import {useAuth} from '../store/useAuth';
 import BreakScreen from '../screens/BreakScreen';
+import DebriefingScreen from '../screens/DebriefingScreen';
 import PreBriefingScreen from '../screens/PreBriefingScreen';
 import ResultScreen from '../screens/ResultScreen';
 import SimulationScreen from '../screens/SimulationScreen';
@@ -46,6 +47,11 @@ export default function MainStack() {
         name="Result"
         component={ResultScreen}
         options={{title: 'Sonuç', headerBackVisible: false}}
+      />
+      <Stack.Screen
+        name="Debriefing"
+        component={DebriefingScreen}
+        options={{title: 'Çözümleme Oturumu'}}
       />
       <Stack.Screen
         name="Break"
