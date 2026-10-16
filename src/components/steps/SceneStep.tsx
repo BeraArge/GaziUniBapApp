@@ -38,6 +38,7 @@ export default function SceneStep({
     hasVideo ? 'video' : step.prompt?.trim() ? 'question' : 'notification',
   );
   const [waitingForNext, setWaitingForNext] = useState(false);
+  const [remainingSeconds, setRemainingSeconds] = useState(0);
   const videoEndedRef = useRef(false);
   const waitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [answered, setAnswered] = useState(false);
@@ -66,6 +67,7 @@ export default function SceneStep({
     videoEndedRef.current = true;
 
     const seconds = Math.max(0, Number(step.beklemeSuresi ?? 0));
+    setRemainingSeconds(Math.ceil(seconds));
 
     const finishVideo = () => {
       setWaitingForNext(false);
@@ -95,6 +97,18 @@ export default function SceneStep({
       finishVideo();
     }, seconds * 1000);
   };
+
+  useEffect(() => {
+    if (!waitingForNext) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setRemainingSeconds(previous => Math.max(0, previous - 1));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [waitingForNext]);
 
   // Soru fazına geçildiğinde cevaplama süresi sayacını başlat.
   useEffect(() => {
@@ -165,6 +179,23 @@ export default function SceneStep({
             paused={phase !== 'video' || waitingForNext}
             onEnd={handleVideoEnd}
           />
+        )}
+
+        {phase === 'video' && waitingForNext && (
+          <View style={styles.waitOverlay} pointerEvents="none">
+            <Text style={styles.waitTitle}>Video tamamlandı</Text>
+
+            <Text style={styles.waitTime}>
+              {Math.floor(remainingSeconds / 60)
+                .toString()
+                .padStart(2, '0')}
+              :{(remainingSeconds % 60).toString().padStart(2, '0')}
+            </Text>
+
+            <Text style={styles.waitDescription}>
+              Bekleme süresi sonunda otomatik devam edilecek.
+            </Text>
+          </View>
         )}
 
         {/* BİLDİRİM FAZI */}
@@ -248,5 +279,32 @@ const styles = StyleSheet.create({
   },
   sheetContent: {
     paddingBottom: spacing.sm,
+  },
+  waitOverlay: {
+    position: 'absolute',
+    bottom: 45,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(0,0,0,0.78)',
+    borderRadius: 16,
+    padding: 18,
+    alignItems: 'center',
+    gap: 6,
+  },
+  waitTitle: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  waitTime: {
+    color: '#FFFFFF',
+    fontSize: 32,
+    fontWeight: '800',
+    fontVariant: ['tabular-nums'],
+  },
+  waitDescription: {
+    color: '#D1D5DB',
+    fontSize: 12,
+    textAlign: 'center',
   },
 });
