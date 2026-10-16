@@ -58,38 +58,78 @@ const initialState: QuestionsState = {
   preBriefingLoaded: false,
   preBriefingError: null,
 };
+
 function mapApiQuestion(q: any): QuestionStep {
-  const cevaplar: any[] = Array.isArray(q.cevaplar) ? q.cevaplar : [];
-  // Sadece dolu (value'su olan) şıkları al.
+  const cevaplar: any[] = Array.isArray(q.cevaplar)
+    ? q.cevaplar
+    : [];
+
   const valid = cevaplar.filter(
-    c => c && c.value != null && String(c.value).trim() !== '',
+    c =>
+      c &&
+      c.value != null &&
+      String(c.value).trim() !== '',
   );
+
   const options = valid.map(c => String(c.value));
   const optionKeys = valid.map(c => String(c.key));
 
-  // Doğru şıkkın indeksi: dogruCevap.key ile eşleşen şık. dogruCevap yoksa
-  // (backend henüz doldurmadıysa) null → o soruda doğru/yanlış gösterilmez.
-  const correctKey = q.dogruCevap?.key;
-  const foundIndex = valid.findIndex(c => c.key === correctKey);
-  const correctIndex = correctKey != null && foundIndex >= 0 ? foundIndex : null;
+  const optionExplanations: Record<string, string> = {};
 
-  // videoPath Windows formatında gelir (videos\\<guid>.mp4) → tam URL.
+  valid.forEach(c => {
+    if (c.key != null && c.explanation) {
+      optionExplanations[String(c.key)] =
+        String(c.explanation);
+    }
+  });
+
+  const correctKey = q.dogruCevap?.key;
+
+  const foundIndex = valid.findIndex(
+    c => String(c.key) === String(correctKey),
+  );
+
+  const correctIndex =
+    correctKey != null && foundIndex >= 0
+      ? foundIndex
+      : null;
+
   const videoUrl = q.videoPath
-    ? `${API_URL}/${String(q.videoPath).replace(/\\/g, '/')}`
+    ? `${API_URL.replace(/\/$/, '')}/${String(
+        q.videoPath,
+      )
+        .replace(/\\/g, '/')
+        .replace(/^\/+/, '')}`
     : undefined;
+
+  const prompt = String(q.soruMetni ?? q.soru ?? '');
 
   return {
     type: 'question',
     id: q.id,
-    prompt: q.soruMetni ?? q.soru ?? '',
+    order: q.order ?? 0,
+
+    prompt,
     options,
     optionKeys,
+    optionExplanations,
+
     correctIndex,
     explanation: q.dogruCevap?.explanation ?? '',
+
     videoUrl,
-    videoTranscript: q.videoTranscript ?? '',
+    videoTranscript: '',
+
+    beklemeSuresi: Number(q.beklemeSuresi ?? 0),
+    bildirimMetni: q.bildirimMetni ?? null,
+    partArasiMi: Boolean(q.partArasiMi),
+
+    isOpenEnded:
+      prompt.trim().length > 0 &&
+      options.length === 0,
   };
 }
+
 
 export const fetchQuestions = createAsyncThunk<
   {items: QuestionStep[]; meta: QuestionsMeta},
@@ -121,11 +161,28 @@ export const fetchQuestions = createAsyncThunk<
     const data = payload?.data ?? {};
     const arr: any[] = Array.isArray(data) ? data : data?.sorular ?? [];
 
-    // id'ye göre artan sırala (1 → 16), sonra eşle.
-    const sorted = [...arr].sort((a, b) => (a?.id ?? 0) - (b?.id ?? 0));
+    
+const sorted = [...arr].sort(
+  (a, b) =>
+    Number(a?.order ?? 0) - Number(b?.order ?? 0),
+);
 
-    // En az 2 dolu şıkkı olan soruları al (eksik/test kayıtlarını ele).
-    const items = sorted.map(mapApiQuestion).filter(q => q.options.length >= 2);
+const items = sorted.map(mapApiQuestion);
+
+console.log('Toplam senaryo adımı:', items.length);
+console.log(
+  'Senaryo sırası:',
+  items.map(item => ({
+    id: item.id,
+    order: item.order,
+    video: Boolean(item.videoUrl),
+    soru: Boolean(item.prompt?.trim()),
+    bildirim: Boolean(item.bildirimMetni),
+    bekleme: item.beklemeSuresi,
+    mola: item.partArasiMi,
+  })),
+);
+
 
     const meta: QuestionsMeta = {
       partBreakQuestionCount: data?.partBreakQuestionCount ?? 0,

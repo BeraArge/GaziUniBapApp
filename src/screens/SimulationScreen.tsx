@@ -1,23 +1,23 @@
-import React, {useEffect, useMemo, useRef, useState} from 'react';
-import {ActivityIndicator, Alert, StyleSheet, Text, View} from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 import SceneStep from '../components/steps/SceneStep';
 import TableStep from '../components/steps/TableStep';
 import TextStep from '../components/steps/TextStep';
 import VideoStep from '../components/steps/VideoStep';
 import Button from '../components/ui/Button';
 import ScreenContainer from '../components/ui/ScreenContainer';
-import {demoCase} from '../data/demoCase';
-import {MainScreenProps} from '../navigation/types';
-import {useAppDispatch, useAppSelector} from '../store/hooks';
-import {fetchQuestions, submitAnswers} from '../store/questionsSlice';
-import {colors, spacing} from '../theme/colors';
-import {AnswerRecord, Step} from '../types/simulation';
+import { demoCase } from '../data/demoCase';
+import { MainScreenProps } from '../navigation/types';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { fetchQuestions, submitAnswers } from '../store/questionsSlice';
+import { colors, spacing } from '../theme/colors';
+import { AnswerRecord, Step } from '../types/simulation';
 
 export default function SimulationScreen({
   navigation,
 }: MainScreenProps<'Simulation'>) {
   const dispatch = useAppDispatch();
-  const {items, meta, loading, error, loaded} = useAppSelector(
+  const { items, meta, loading, error, loaded } = useAppSelector(
     s => s.questions,
   );
 
@@ -28,6 +28,10 @@ export default function SimulationScreen({
   const answersRef = useRef<AnswerRecord[]>([]);
   // Devam (resume) konumlandırması yalnızca bir kez yapılır.
   const positionedRef = useRef(false);
+  // API'ye aynı anda birden fazla kayıt isteği gönderilmesini önler.
+  const savingRef = useRef(false);
+  // Mola penceresinin aynı adımda tekrar açılmasını önler.
+  const breakAlertRef = useRef(false);
 
   // Açılışta soruları API'den çek.
   useEffect(() => {
@@ -36,32 +40,36 @@ export default function SimulationScreen({
     }
   }, [dispatch, loaded]);
 
-  // Statik vaka adımları + API'den gelen sorular.
+  // Statik ön bilgilendirme adımları korunuyor.
+  // API kayıtları bunların ardından gösterilecek.
   const steps: Step[] = useMemo(() => [...demoCase.steps, ...items], [items]);
-  const totalQuestions = items.length;
 
-  // Statik tanım adımlarının sayısı (sorular bunlardan sonra eklenir).
-  const staticCount = steps.length - totalQuestions;
-  const {partBreakQuestionCount, ilkPartTamamlandiMi, kalanSoruSayisi} = meta;
+  // Yalnızca soru metni bulunan kayıtları say.
+  const totalQuestions = useMemo(
+    () => items.filter(item => Boolean(item.prompt?.trim())).length,
+    [items],
+  );
 
-  // Devam (resume) atlama miktarı (sorular arasında 0-based).
-  // Backend devam ederken `sorular`'ı yalnızca kalan sorularla döndürebilir;
-  // bu durumda totalQuestions == kalanSoruSayisi olur → offset 0 (listenin
-  // başından başla). Tüm soruları döndürürse offset = atlanacak soru sayısı.
-  const resumeOffset = ilkPartTamamlandiMi
-    ? Math.max(0, totalQuestions - (kalanSoruSayisi || totalQuestions))
-    : 0;
+  // Statik ön bilgilendirme ekranlarının sayısı.
+  const staticCount = demoCase.steps.length;
+
+  const { ilkPartTamamlandiMi } = meta;
 
   // Devam: ilk part tamamlandıysa statik adımları atlayıp doğrudan kalan ilk
   // sorudan başla (bir kez).
   useEffect(() => {
-    if (loaded && totalQuestions > 0 && !positionedRef.current) {
-      positionedRef.current = true;
-      if (ilkPartTamamlandiMi) {
-        setIndex(staticCount + resumeOffset);
-      }
+    if (!loaded || items.length === 0 || positionedRef.current) {
+      return;
     }
-  }, [loaded, totalQuestions, ilkPartTamamlandiMi, staticCount, resumeOffset]);
+
+    positionedRef.current = true;
+
+    if (ilkPartTamamlandiMi) {
+      // Backend ilk 7 kaydı çıkarmışsa gelen listenin
+      // ilk elemanı 8. senaryo adımıdır.
+      setIndex(staticCount);
+    }
+  }, [loaded, items.length, ilkPartTamamlandiMi, staticCount]);
 
   const goToResult = () => {
     // replace: SimulationScreen (ve üstündeki SceneStep mod'u) kaldırılır,
@@ -80,69 +88,208 @@ export default function SimulationScreen({
     setIndex(i => i + 1);
   };
 
-  const step = steps[index];
-  const isLast = index === steps.length - 1;
-  const isQuestion = step.type === 'question';
+  const completeCurrentStep = () => {
+    const currentStep = steps[index];
 
-  // O anki sorunun 0-based sırası (sorular arasında).
-  const questionOrdinal = index - staticCount;
-  // Part-arası sorusu: ilk part'ın son sorusu (count → 0-based index).
-  const isBreakQuestion =
-    partBreakQuestionCount > 0 &&
-    questionOrdinal === partBreakQuestionCount - 1 &&
-    !ilkPartTamamlandiMi;
+    if (
+      currentStep.type === 'question' &&
+      currentStep.partArasiMi &&
+      !ilkPartTamamlandiMi
+    ) {
+      if (breakAlertRef.current) {
+        return;
+      }
 
-  // Tanım adımlarının sonuna gelindi ama sorular henüz hazır değil.
-  const awaitingQuestions = isLast && !loaded;
+      breakAlertRef.current = true;
 
-  // Soru adımı: tam ekran video + modal soru olarak sunulur (SceneStep).
-  const handleSceneNext = async (answer: AnswerRecord) => {
-    if (answer.isCorrect) {
-      correctRef.current += 1;
-    }
-    answersRef.current.push(answer);
-
-    // Part 1'in son sorusu işaretlendi → ara vermek isteyip istemediğini sor.
-    // Sadece ARA VERİRSE part 1 cevapları ayrı gönderilir. Devam ederse hiçbir
-    // şey gönderilmez; tüm cevaplar en sonda tek seferde gönderilir.
-    if (isBreakQuestion) {
       Alert.alert(
-        'Ara',
-        'Ara vermek ister misiniz?',
+        'Simülasyona Ara Ver',
+        'Bu bölümü tamamladınız. Ara vermek ister misiniz?',
         [
           {
-            text: 'Hayır',
-            style: 'cancel',
-            onPress: () => goNext(),
+            text: 'Devam Et',
+            onPress: () => {
+              goNext();
+            },
           },
           {
-            text: 'Evet',
-            onPress: () => {
-              dispatch(submitAnswers({cevaplar: answersRef.current.slice()}));
-              navigation.replace('Break');
+            text: 'Ara Ver',
+            onPress: async () => {
+              if (savingRef.current) {
+                return;
+              }
+
+              const cevaplar = answersRef.current.slice();
+
+              if (cevaplar.length === 0) {
+                Alert.alert(
+                  'Kayıt gerekli',
+                  'Ara vermeden önce ilerleme kaydının backend tarafından desteklenmesi gerekiyor.',
+                );
+                return;
+              }
+
+              savingRef.current = true;
+
+              try {
+                const result = await dispatch(
+                  submitAnswers({ cevaplar }),
+                ).unwrap();
+
+                if (result?.isSuccess === false) {
+                  throw new Error(result?.message || 'Cevaplar kaydedilemedi.');
+                }
+
+                navigation.replace('Break');
+              } catch (err: any) {
+                breakAlertRef.current = false;
+
+                Alert.alert(
+                  'Kayıt Hatası',
+                  err?.message ||
+                    'Cevaplar kaydedilemedi. Lütfen tekrar deneyin.',
+                  [
+                    {
+                      text: 'Tamam',
+                      onPress: () => {
+                        completeCurrentStep();
+                      },
+                    },
+                  ],
+                );
+              } finally {
+                savingRef.current = false;
+              }
             },
           },
         ],
-        {cancelable: false},
+        { cancelable: false },
       );
-      return;
-    }
-
-    // Simülasyonun son sorusu → bu oturumdaki TÜM cevapları tek seferde gönder.
-    if (isLast) {
-      // Skor/sıralama güncel olsun diye gönderimi bekle, sonra sonuca geç.
-      await dispatch(submitAnswers({cevaplar: answersRef.current.slice()}));
-      goToResult();
       return;
     }
 
     goNext();
   };
 
+  const handleStepComplete = async () => {
+    // Son senaryo adımı tamamlandıysa cevapları kaydet.
+    if (isLast) {
+      if (savingRef.current) {
+        return;
+      }
+
+      savingRef.current = true;
+
+      try {
+        const cevaplar = answersRef.current.slice();
+
+        // Kaydedilecek cevap varsa backend'e gönder.
+        if (cevaplar.length > 0) {
+          const result = await dispatch(submitAnswers({ cevaplar })).unwrap();
+
+          if (result?.isSuccess === false) {
+            throw new Error(result?.message || 'Cevaplar kaydedilemedi.');
+          }
+        }
+
+        goToResult();
+      } catch (err: any) {
+        Alert.alert(
+          'Kayıt Hatası',
+          err?.message || 'Cevaplar kaydedilemedi. Lütfen tekrar deneyin.',
+        );
+      } finally {
+        savingRef.current = false;
+      }
+
+      return;
+    }
+
+    // Son adım değilse mola kontrolünü yap.
+    completeCurrentStep();
+  };
+
+  const step = steps[index];
+  const isLast = index === steps.length - 1;
+  const isQuestion = step.type === 'question';
+
+  // O anki sorunun 0-based sırası (sorular arasında).
+  const questionOrdinal = items
+    .slice(0, Math.max(0, index - staticCount))
+    .filter(item => Boolean(item.prompt?.trim())).length;
+
+  // Tanım adımlarının sonuna gelindi ama sorular henüz hazır değil.
+  const awaitingQuestions =
+    index === staticCount - 1 && (!loaded || items.length === 0);
+
+  // Soru adımı: tam ekran video + modal soru olarak sunulur (SceneStep).
+
+  const handleSceneNext = async (answer: AnswerRecord) => {
+    // Aynı sorunun cevabı daha önce eklendiyse tekrar ekleme.
+    // Kayıt işlemi devam ediyorsa yeni işlem başlatma.
+    if (savingRef.current) {
+      return;
+    }
+
+    // Aynı sorunun cevabını ikinci kez ekleme.
+    const alreadyAnswered = answersRef.current.some(
+      item => item.soruId === answer.soruId,
+    );
+
+    if (!alreadyAnswered) {
+      answersRef.current.push(answer);
+
+      if (answer.isCorrect) {
+        correctRef.current += 1;
+      }
+    }
+
+    // Daha önce cevaplanan bir soruda yalnızca
+    // başarısız final kaydının tekrar denenmesine izin ver.
+    if (alreadyAnswered && !isLast) {
+      return;
+    }
+
+    if (isLast) {
+      if (savingRef.current) {
+        return;
+      }
+
+      savingRef.current = true;
+
+      try {
+        const result = await dispatch(
+          submitAnswers({
+            cevaplar: answersRef.current.slice(),
+          }),
+        ).unwrap();
+
+        if (result?.isSuccess === false) {
+          throw new Error(result?.message || 'Cevaplar kaydedilemedi.');
+        }
+
+        goToResult();
+      } catch (err: any) {
+        Alert.alert(
+          'Kayıt Hatası',
+          err?.message || 'Cevaplar kaydedilemedi. Lütfen tekrar deneyin.',
+        );
+      } finally {
+        savingRef.current = false;
+      }
+      return;
+    }
+
+    completeCurrentStep();
+  };
+
   // Görüntülenecek soru numarası (oturum başlangıcından itibaren) ve toplam.
-  const sessionStartOrdinal = resumeOffset;
-  const displayQuestionNo = questionOrdinal - sessionStartOrdinal + 1;
-  const displayTotal = kalanSoruSayisi || totalQuestions;
+  const displayQuestionNo =
+    step.type === 'question' && step.prompt?.trim()
+      ? questionOrdinal + 1
+      : questionOrdinal;
+
+  const displayTotal = totalQuestions;
 
   const renderStep = () => {
     switch (step.type) {
@@ -161,6 +308,7 @@ export default function SimulationScreen({
             questionNo={displayQuestionNo}
             totalQuestions={displayTotal}
             onNext={handleSceneNext}
+            onStepComplete={handleStepComplete}
           />
         );
     }
@@ -201,7 +349,7 @@ export default function SimulationScreen({
             <View
               style={[
                 styles.progressFill,
-                {width: `${((index + 1) / steps.length) * 100}%`},
+                { width: `${((index + 1) / steps.length) * 100}%` },
               ]}
             />
           </View>
@@ -210,7 +358,8 @@ export default function SimulationScreen({
           </Text>
           <Button title={nextTitle} onPress={goNext} disabled={nextDisabled} />
         </>
-      }>
+      }
+    >
       {renderStep()}
     </ScreenContainer>
   );

@@ -1,17 +1,22 @@
-import React, {useState} from 'react';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
-import {QuestionStep as QuestionStepType} from '../../types/simulation';
-import {colors, radius, spacing} from '../../theme/colors';
+import React, { useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { QuestionStep as QuestionStepType } from '../../types/simulation';
+import { colors, radius, spacing } from '../../theme/colors';
 import Card from '../ui/Card';
 
 type Props = {
   step: QuestionStepType;
   /** Cevap verildiğinde doğru mu + seçilen şık indeksini üst ekrana iletir. */
-  onAnswered: (isCorrect: boolean, selectedIndex: number) => void;
+  onAnswered: (
+    isCorrect: boolean,
+    selectedIndex: number,
+    openEndedText?: string,
+  ) => void;
 };
 
-export default function QuestionStep({step, onAnswered}: Props) {
+export default function QuestionStep({ step, onAnswered }: Props) {
   const [selected, setSelected] = useState<number | null>(null);
+  const [openEndedAnswer, setOpenEndedAnswer] = useState('');
   const answered = selected !== null;
   // Doğru cevap bilinmiyorsa (backend henüz doldurmadıysa) doğru/yanlış gösterilmez.
   const hasAnswer = step.correctIndex != null;
@@ -23,6 +28,16 @@ export default function QuestionStep({step, onAnswered}: Props) {
     }
     setSelected(index);
     onAnswered(hasAnswer && index === step.correctIndex, index);
+  };
+  const handleOpenEndedSubmit = () => {
+    const answer = openEndedAnswer.trim();
+
+    if (!answer || answered) {
+      return;
+    }
+
+    setSelected(-1);
+   onAnswered(true, -1, answer);
   };
 
   const optionStyle = (index: number) => {
@@ -48,49 +63,80 @@ export default function QuestionStep({step, onAnswered}: Props) {
     <View style={styles.wrap}>
       <Text style={styles.label}>SORU</Text>
       <Text style={styles.prompt}>{step.prompt}</Text>
+      {step.isOpenEnded && (
+        <TextInput
+          style={styles.openEndedInput}
+          placeholder="Cevabınızı buraya yazınız..."
+          placeholderTextColor={colors.textMuted}
+          multiline
+          textAlignVertical="top"
+          value={openEndedAnswer}
+          onChangeText={setOpenEndedAnswer}
+          maxLength={2000}
+          editable={!answered}
+        />
+      )}
+      {step.isOpenEnded && !answered && (
+        <Pressable
+          style={styles.openEndedButton}
+          onPress={handleOpenEndedSubmit}
+          disabled={!openEndedAnswer.trim()}
+        >
+          <Text style={styles.openEndedButtonText}>Cevabı Onayla</Text>
+        </Pressable>
+      )}
 
-      <View style={styles.options}>
-        {step.options.map((opt, i) => (
-          <Pressable
-            key={i}
-            onPress={() => handleSelect(i)}
-            style={optionStyle(i)}
-            disabled={answered}>
-            <Text style={styles.optionText}>{opt}</Text>
-            {answered && hasAnswer && i === step.correctIndex && (
-              <Text style={styles.mark}>✓</Text>
-            )}
-            {answered && hasAnswer && i === selected && i !== step.correctIndex && (
-              <Text style={styles.mark}>✕</Text>
-            )}
-          </Pressable>
-        ))}
-      </View>
+      {!step.isOpenEnded && (
+        <View style={styles.options}>
+          {step.options.map((opt, i) => (
+            <Pressable
+              key={i}
+              onPress={() => handleSelect(i)}
+              style={optionStyle(i)}
+              disabled={answered}
+            >
+              <Text style={styles.optionText}>{opt}</Text>
+              {answered && hasAnswer && i === step.correctIndex && (
+                <Text style={styles.mark}>✓</Text>
+              )}
+              {answered &&
+                hasAnswer &&
+                i === selected &&
+                i !== step.correctIndex && <Text style={styles.mark}>✕</Text>}
+            </Pressable>
+          ))}
+        </View>
+      )}
 
-      {answered && hasAnswer && (
-        <Card
-          style={
-            isCorrect ? styles.feedbackCorrect : styles.feedbackWrong
-          }>
+      {answered && hasAnswer && !step.isOpenEnded && (
+        <Card style={isCorrect ? styles.feedbackCorrect : styles.feedbackWrong}>
           <Text
             style={[
               styles.feedbackTitle,
-              {color: isCorrect ? colors.success : colors.danger},
-            ]}>
+              { color: isCorrect ? colors.success : colors.danger },
+            ]}
+          >
             {isCorrect ? '✓ Doğru!' : '✕ Yanlış'}
           </Text>
-          {/* Açıklama (videoTranscript) yalnızca YANLIŞ cevapta gösterilir. */}
-          {!isCorrect && step.videoTranscript ? (
-            <Text style={styles.feedbackText}>{step.videoTranscript}</Text>
-          ) : null}
+          {/* Yanlış cevapta seçilen şıkkın açıklamasını göster. */}
+          {!isCorrect &&
+            selected !== null &&
+            (() => {
+              const selectedKey = step.optionKeys?.[selected];
+              const explanation = selectedKey
+                ? step.optionExplanations?.[selectedKey]
+                : null;
+
+              return explanation ? (
+                <Text style={styles.feedbackText}>{explanation}</Text>
+              ) : null;
+            })()}
         </Card>
       )}
 
-      {answered && !hasAnswer && (
+     {answered && (step.isOpenEnded || !hasAnswer) && (
         <Card style={styles.feedbackNeutral}>
-          <Text style={styles.feedbackNeutralText}>
-            Cevabınız kaydedildi.
-          </Text>
+          <Text style={styles.feedbackNeutralText}>Cevabınız kaydedildi.</Text>
         </Card>
       )}
     </View>
@@ -180,5 +226,26 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: colors.textMuted,
     fontWeight: '600',
+  },
+  openEndedInput: {
+    minHeight: 150,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 16,
+    color: colors.text,
+    backgroundColor: colors.surface,
+  },
+  openEndedButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+  },
+  openEndedButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

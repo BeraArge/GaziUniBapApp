@@ -25,20 +25,47 @@ export type TableStep = {
 export type VideoStep = {
   type: 'video';
   title: string;
-  videoUrl?: string; // şimdilik placeholder; gerçek oynatıcı sonra
-  transcript: string; // "Metni Oku" ile gösterilecek öykü metni
+  videoUrl?: string;
+
+  // Eski bileşenlerle uyumluluk için geçici olarak korunuyor.
+  transcript: string;
+
+  id?: number;
+  order?: number;
+
+  beklemeSuresi?: number;
+  bildirimMetni?: string | null;
+  partArasiMi?: boolean;
+};
+
+export type NotificationStep = {
+  type: 'notification';
+  id: number;
+  order: number;
+  message: string;
 };
 
 export type QuestionStep = {
   type: 'question';
-  id: number; // backend soruId
+  id: number;
+  order?: number;
+
   prompt: string;
   options: string[];
-  optionKeys: string[]; // options ile paralel: ['A','B',...]
-  correctIndex: number | null; // null => doğru cevap bilinmiyor
+  optionKeys: string[];
+  optionExplanations?: Record<string, string>;
+
+  correctIndex: number | null;
   explanation?: string;
-  videoUrl?: string; // soru öncesi izlenecek tam ekran sahne videosu
-  videoTranscript?: string; // "Metni Oku" ile gösterilecek metin
+
+  videoUrl?: string;
+  videoTranscript?: string;
+
+  beklemeSuresi?: number;
+  bildirimMetni?: string | null;
+  partArasiMi?: boolean;
+
+  isOpenEnded?: boolean;
 };
 
 /** Bir soruya verilen cevabın backend'e gönderilecek kaydı. */
@@ -75,7 +102,12 @@ export type CompetitionHome = {
   nearbyUsers: LeaderboardEntry[];
 };
 
-export type Step = TextStep | TableStep | VideoStep | QuestionStep;
+export type Step =
+  | TextStep
+  | TableStep
+  | VideoStep
+  | QuestionStep
+  | NotificationStep;
 
 export type Case = {
   id: string;
