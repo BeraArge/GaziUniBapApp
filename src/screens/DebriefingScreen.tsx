@@ -32,7 +32,7 @@ const PHASES: Phase[] = [
     label: '1. AŞAMA',
     title: 'Tepki (Duygusal Farkındalık)',
     questions: [
-      'Simülasyon sürecinde kendinizi nasıl hissettiniz?',
+      'Simülasyon senaryosunu izlerken neler hissettiniz?',
       'En çok zorlandığınız ya da sizi düşündüren sahne hangisiydi?',
       '“Burada Merve Hemşire’nin yerinde olsaydım nasıl yaklaşırdım?” diye düşündüğünüz anlar oldu mu?',
     ],
@@ -45,6 +45,7 @@ const PHASES: Phase[] = [
       'Bu senaryoda hasta güvenliğini en çok tehdit eden durum sizce neydi?',
       'Hata ya da eksiklik fark edildiğinde hemşirenin yaklaşımı hasta güvenliği kültürüyle uyumlu muydu?',
       'Bu durumun hasta açısından kısa ve uzun vadede ne tür sonuçlara yol açabileceğini düşünüyorsunuz? Eğer fark edilmeseydi süreç nasıl ilerleyebilirdi?',
+      'İzlediğiniz simülasyon senaryosunda dikkatinizi çeken olay veya durumu kısaca belirtiniz.'
     ],
   },
   {

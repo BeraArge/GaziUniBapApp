@@ -9,8 +9,8 @@ import {AuthScreenProps} from '../../navigation/types';
 
 export default function LoginScreen({navigation}: AuthScreenProps<'Login'>) {
   const {login, loading, error} = useAuth();
-  const [studentNo, setStudentNo] = useState('1234');
-  const [password, setPassword] = useState('123123Aa');
+  const [studentNo, setStudentNo] = useState('');
+  const [password, setPassword] = useState('');
 
   // Hata state'e düştüğünde kullanıcıya göster. Başarıda token set olur ve
   // RootNavigator otomatik olarak ana akışa geçer.
@@ -37,9 +37,17 @@ export default function LoginScreen({navigation}: AuthScreenProps<'Login'>) {
           resizeMode="contain"
         />
         <Text style={styles.title}>GüvenSim</Text>
-        <Text style={styles.subtitle}>
-          Devam etmek için hesabınıza giriş yapın.
-        </Text>
+        <View style={styles.projectInfo}>
+  <Text style={styles.projectLabel}>
+    AKADEMİK ARAŞTIRMA UYGULAMASI
+  </Text>
+
+  <Text style={styles.subtitle}>
+    Video Tabanlı Simülasyonun Hemşirelik
+    Öğrencilerinin Hasta Güvenliği Yetkinliği
+    Öz Değerlendirme ve Bilgi Düzeylerine Etkisi
+  </Text>
+</View>
       </View>
 
       <TextField
@@ -93,9 +101,27 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.text,
   },
-  subtitle: {
-    fontSize: 15,
-    color: colors.textMuted,
-    textAlign: 'center',
-  },
+ projectInfo: {
+  borderRadius: 14,
+  paddingVertical: 16,
+  paddingHorizontal: 18,
+  marginTop: 12,
+  gap: 8,
+},
+
+projectLabel: {
+  fontSize: 10,
+  fontWeight: '700',
+  color: '#64748B',
+  letterSpacing: 1.2,
+  textAlign: 'center',
+},
+
+subtitle: {
+  fontSize: 15,
+  lineHeight: 20,
+  color: colors.text,
+  textAlign: 'center',
+  fontWeight: '500',
+},
 });
