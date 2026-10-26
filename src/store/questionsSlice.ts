@@ -1,8 +1,12 @@
-import {createAsyncThunk, createSlice} from '@reduxjs/toolkit';
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import axios from 'axios';
-import {API_URL} from '../config';
-import {AnswerRecord, CompetitionHome, QuestionStep} from '../types/simulation';
-import {logout} from './authSlice';
+import { API_URL } from '../config';
+import {
+  AnswerRecord,
+  CompetitionHome,
+  QuestionStep,
+} from '../types/simulation';
+import { logout } from './authSlice';
 
 interface QuestionsMeta {
   partBreakQuestionCount: number;
@@ -60,15 +64,10 @@ const initialState: QuestionsState = {
 };
 
 function mapApiQuestion(q: any): QuestionStep {
-  const cevaplar: any[] = Array.isArray(q.cevaplar)
-    ? q.cevaplar
-    : [];
+  const cevaplar: any[] = Array.isArray(q.cevaplar) ? q.cevaplar : [];
 
   const valid = cevaplar.filter(
-    c =>
-      c &&
-      c.value != null &&
-      String(c.value).trim() !== '',
+    c => c && c.value != null && String(c.value).trim() !== '',
   );
 
   const options = valid.map(c => String(c.value));
@@ -78,26 +77,19 @@ function mapApiQuestion(q: any): QuestionStep {
 
   valid.forEach(c => {
     if (c.key != null && c.explanation) {
-      optionExplanations[String(c.key)] =
-        String(c.explanation);
+      optionExplanations[String(c.key)] = String(c.explanation);
     }
   });
 
   const correctKey = q.dogruCevap?.key;
 
-  const foundIndex = valid.findIndex(
-    c => String(c.key) === String(correctKey),
-  );
+  const foundIndex = valid.findIndex(c => String(c.key) === String(correctKey));
 
   const correctIndex =
-    correctKey != null && foundIndex >= 0
-      ? foundIndex
-      : null;
+    correctKey != null && foundIndex >= 0 ? foundIndex : null;
 
   const videoUrl = q.videoPath
-    ? `${API_URL.replace(/\/$/, '')}/${String(
-        q.videoPath,
-      )
+    ? `${API_URL.replace(/\/$/, '')}/${String(q.videoPath)
         .replace(/\\/g, '/')
         .replace(/^\/+/, '')}`
     : undefined;
@@ -124,20 +116,18 @@ function mapApiQuestion(q: any): QuestionStep {
     bildirimMetni: q.bildirimMetni ?? null,
     partArasiMi: Boolean(q.partArasiMi),
 
-    isOpenEnded:
-      prompt.trim().length > 0 &&
-      options.length === 0,
+    isOpenEnded: prompt.trim().length > 0 && options.length === 0,
   };
 }
 
-
 export const fetchQuestions = createAsyncThunk<
-  {items: QuestionStep[]; meta: QuestionsMeta},
+  { items: QuestionStep[]; meta: QuestionsMeta },
   void,
-  {rejectValue: string}
->('questions/fetchAll', async (_, {getState, rejectWithValue}) => {
+  { rejectValue: string }
+>('questions/fetchAll', async (_, { getState, rejectWithValue }) => {
   try {
-    const auth = (getState() as {auth: {token: string | null; user: any}}).auth;
+    const auth = (getState() as { auth: { token: string | null; user: any } })
+      .auth;
     const token = auth.token;
 
     // userId'yi giriş yapan kullanıcıdan dinamik al. Login yanıtındaki `data`
@@ -146,8 +136,8 @@ export const fetchQuestions = createAsyncThunk<
     console.log('GetAllSorus userId:', userId);
 
     const response = await axios.get(`${API_URL}/api/soru/GetAllSorus`, {
-      params: userId != null ? {userId} : undefined,
-      headers: token ? {Authorization: `Bearer ${token}`} : undefined,
+      params: userId != null ? { userId } : undefined,
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     });
     console.log('GetAllSorus response:', response.data);
 
@@ -161,28 +151,25 @@ export const fetchQuestions = createAsyncThunk<
     const data = payload?.data ?? {};
     const arr: any[] = Array.isArray(data) ? data : data?.sorular ?? [];
 
-    
-const sorted = [...arr].sort(
-  (a, b) =>
-    Number(a?.order ?? 0) - Number(b?.order ?? 0),
-);
+    const sorted = [...arr].sort(
+      (a, b) => Number(a?.order ?? 0) - Number(b?.order ?? 0),
+    );
 
-const items = sorted.map(mapApiQuestion);
+    const items = sorted.map(mapApiQuestion);
 
-console.log('Toplam senaryo adımı:', items.length);
-console.log(
-  'Senaryo sırası:',
-  items.map(item => ({
-    id: item.id,
-    order: item.order,
-    video: Boolean(item.videoUrl),
-    soru: Boolean(item.prompt?.trim()),
-    bildirim: Boolean(item.bildirimMetni),
-    bekleme: item.beklemeSuresi,
-    mola: item.partArasiMi,
-  })),
-);
-
+    console.log('Toplam senaryo adımı:', items.length);
+    console.log(
+      'Senaryo sırası:',
+      items.map(item => ({
+        id: item.id,
+        order: item.order,
+        video: Boolean(item.videoUrl),
+        soru: Boolean(item.prompt?.trim()),
+        bildirim: Boolean(item.bildirimMetni),
+        bekleme: item.beklemeSuresi,
+        mola: item.partArasiMi,
+      })),
+    );
 
     const meta: QuestionsMeta = {
       partBreakQuestionCount: data?.partBreakQuestionCount ?? 0,
@@ -193,7 +180,7 @@ console.log(
       userId: data?.userId ?? userId,
     };
 
-    return {items, meta};
+    return { items, meta };
   } catch (error: any) {
     const message =
       error?.response?.data?.message ??
@@ -204,16 +191,17 @@ console.log(
 });
 
 /**
- * Bir part tamamlandığında verilen cevapları backend'e kaydeder:
+ * Her soru tamamlandığında tek cevabı backend'e kaydeder:
  * POST /api/soruUser/add  body: { userId, cevaplar: AnswerRecord[] }
  */
 export const submitAnswers = createAsyncThunk<
   any,
-  {cevaplar: AnswerRecord[]},
-  {rejectValue: string}
->('questions/submit', async ({cevaplar}, {getState, rejectWithValue}) => {
+  { cevaplar: AnswerRecord[] },
+  { rejectValue: string }
+>('questions/submit', async ({ cevaplar }, { getState, rejectWithValue }) => {
   try {
-    const auth = (getState() as {auth: {token: string | null; user: any}}).auth;
+    const auth = (getState() as { auth: { token: string | null; user: any } })
+      .auth;
     const token = auth.token;
     const userId = auth.user?.id ?? null;
 
@@ -230,7 +218,7 @@ export const submitAnswers = createAsyncThunk<
     console.log('soruUser/add body:', body);
 
     const response = await axios.post(`${API_URL}/api/soruUser/add`, body, {
-      headers: token ? {Authorization: `Bearer ${token}`} : undefined,
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     });
     console.log('soruUser/add response:', response.data);
     return response.data;
@@ -243,6 +231,50 @@ export const submitAnswers = createAsyncThunk<
   }
 });
 
+export const completeSimulation = createAsyncThunk<
+  any,
+  void,
+  { rejectValue: string }
+>('questions/completeSimulation', async (_, { getState, rejectWithValue }) => {
+  try {
+    const auth = (
+      getState() as {
+        auth: { token: string | null; user: any };
+      }
+    ).auth;
+
+    const userId = auth.user?.id;
+    const token = auth.token;
+
+    if (userId == null) {
+      return rejectWithValue('Kullanıcı bulunamadı.');
+    }
+
+    const response = await axios.post(
+      `${API_URL}/api/soruUser/CompleteSimulation`,
+      null,
+      {
+        params: { userId },
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      },
+    );
+
+    if (response.data?.isSuccess === false) {
+      return rejectWithValue(
+        response.data.message || 'Simülasyon tamamlanamadı.',
+      );
+    }
+
+    return response.data;
+  } catch (error: any) {
+    return rejectWithValue(
+      error?.response?.data?.message ||
+        error?.message ||
+        'Simülasyon tamamlanırken hata oluştu.',
+    );
+  }
+});
+
 /**
  * Simülasyon bitiminde skor + sıralama verisini çeker:
  * GET /api/soruUser/GetCompetitionHome?userId=<id>
@@ -250,18 +282,19 @@ export const submitAnswers = createAsyncThunk<
 export const fetchCompetitionHome = createAsyncThunk<
   CompetitionHome,
   void,
-  {rejectValue: string}
->('questions/competition', async (_, {getState, rejectWithValue}) => {
+  { rejectValue: string }
+>('questions/competition', async (_, { getState, rejectWithValue }) => {
   try {
-    const auth = (getState() as {auth: {token: string | null; user: any}}).auth;
+    const auth = (getState() as { auth: { token: string | null; user: any } })
+      .auth;
     const token = auth.token;
     const userId = auth.user?.id ?? null;
 
     const response = await axios.get(
       `${API_URL}/api/soruUser/GetCompetitionHome`,
       {
-        params: userId != null ? {userId} : undefined,
-        headers: token ? {Authorization: `Bearer ${token}`} : undefined,
+        params: userId != null ? { userId } : undefined,
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       },
     );
     console.log('GetCompetitionHome response:', response.data);
@@ -293,11 +326,26 @@ function htmlToPlainText(html: string): string {
   s = s.replace(/<br\s*\/?>/gi, '\n');
   s = s.replace(/<[^>]+>/g, '');
   const entities: Record<string, string> = {
-    '&ouml;': 'ö', '&Ouml;': 'Ö', '&uuml;': 'ü', '&Uuml;': 'Ü',
-    '&ccedil;': 'ç', '&Ccedil;': 'Ç', '&nbsp;': ' ', '&amp;': '&',
-    '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&apos;': "'",
-    '&rsquo;': '’', '&lsquo;': '‘', '&ldquo;': '“', '&rdquo;': '”',
-    '&hellip;': '…', '&ndash;': '–', '&mdash;': '—',
+    '&ouml;': 'ö',
+    '&Ouml;': 'Ö',
+    '&uuml;': 'ü',
+    '&Uuml;': 'Ü',
+    '&ccedil;': 'ç',
+    '&Ccedil;': 'Ç',
+    '&nbsp;': ' ',
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#39;': "'",
+    '&apos;': "'",
+    '&rsquo;': '’',
+    '&lsquo;': '‘',
+    '&ldquo;': '“',
+    '&rdquo;': '”',
+    '&hellip;': '…',
+    '&ndash;': '–',
+    '&mdash;': '—',
   };
   s = s.replace(/&[a-zA-Z]+;|&#\d+;/g, m => entities[m] ?? m);
   s = s.replace(/[ \t]+/g, ' ');
@@ -310,24 +358,25 @@ function htmlToPlainText(html: string): string {
  * GET /api/onBilgilendirme/GetOnBilgilendirmeForMobile
  */
 export const fetchPreBriefing = createAsyncThunk<
-  {title: string | null; text: string},
+  { title: string | null; text: string },
   void,
-  {rejectValue: string}
->('questions/preBriefing', async (_, {getState, rejectWithValue}) => {
+  { rejectValue: string }
+>('questions/preBriefing', async (_, { getState, rejectWithValue }) => {
   try {
-    const auth = (getState() as {auth: {token: string | null; user: any}}).auth;
+    const auth = (getState() as { auth: { token: string | null; user: any } })
+      .auth;
     const token = auth.token;
 
     const url = `${API_URL}/api/onBilgilendirme/GetOnBilgilendirmeForMobile`;
 
     const response = await axios.get(url, {
       timeout: 15000,
-      headers: token ? {Authorization: `Bearer ${token}`} : undefined,
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     });
     console.log('GetOnBilgilendirmeForMobile response:', response.data);
 
     const payload = response.data;
-   
+
     // Yanıt zarfı: { isSuccess, data: {...} } ya da doğrudan nesne/dizi.
     let data = payload?.data ?? payload;
     if (Array.isArray(data)) {
@@ -348,7 +397,7 @@ export const fetchPreBriefing = createAsyncThunk<
       return rejectWithValue('Ön bilgilendirme metni bulunamadı');
     }
 
-    return {title, text: htmlToPlainText(String(text))};
+    return { title, text: htmlToPlainText(String(text)) };
   } catch (error: any) {
     console.log(
       'GetOnBilgilendirme HATA:',
@@ -375,24 +424,24 @@ export interface CozumlemeSoruCevap {
  */
 export const submitCozumlemeCevap = createAsyncThunk<
   any,
-  {asama: string; soruCevap: CozumlemeSoruCevap[]},
-  {rejectValue: string}
+  { asama: string; soruCevap: CozumlemeSoruCevap[] },
+  { rejectValue: string }
 >(
   'questions/cozumleme',
-  async ({asama, soruCevap}, {getState, rejectWithValue}) => {
+  async ({ asama, soruCevap }, { getState, rejectWithValue }) => {
     try {
-      const auth = (getState() as {auth: {token: string | null; user: any}})
+      const auth = (getState() as { auth: { token: string | null; user: any } })
         .auth;
       const token = auth.token;
       const userId = auth.user?.id ?? null;
 
-      const body = {userId, asama, soruCevap};
+      const body = { userId, asama, soruCevap };
       console.log('AddCozumlemeCevap body:', body);
 
       const response = await axios.post(
         `${API_URL}/api/cozumlemeSoruUser/AddCozumlemeCevap`,
         body,
-        {headers: token ? {Authorization: `Bearer ${token}`} : undefined},
+        { headers: token ? { Authorization: `Bearer ${token}` } : undefined },
       );
       console.log('AddCozumlemeCevap response:', response.data);
 

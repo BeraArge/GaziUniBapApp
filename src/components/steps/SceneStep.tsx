@@ -18,6 +18,7 @@ type Props = {
   /** İlerle/Bitir'e basıldığında verilen cevabın kaydını üst ekrana iletir. */
   onNext: (answer: AnswerRecord) => void;
   onStepComplete?: () => void;
+  saving?: boolean;
 };
 
 /**
@@ -32,6 +33,7 @@ export default function SceneStep({
   totalQuestions,
   onNext,
   onStepComplete,
+  saving = false,
 }: Props) {
   const hasVideo = !!step.videoUrl;
   const [phase, setPhase] = useState<'video' | 'question' | 'notification'>(
@@ -202,7 +204,10 @@ export default function SceneStep({
         {phase === 'notification' && (
           <NotificationStep
             message={step.bildirimMetni ?? ''}
+            buttonTitle={step.id === 47 && step.order === 27 ? 'Bitir ve Sonucu Gör' : 'Devam Et'}
+            disabled={saving}
             onNext={() => {
+              if (saving) return;
               if (pendingAnswerRef.current) {
                 const answer = pendingAnswerRef.current;
                 pendingAnswerRef.current = null;
@@ -234,11 +239,10 @@ export default function SceneStep({
               {answered && (
                 <Button
                   title={
-                    questionNo === totalQuestions && !step.bildirimMetni?.trim()
-                      ? 'Bitir ve Sonucu Gör'
-                      : 'İlerle'
+                    'İlerle'
                   }
                   onPress={handleNext}
+                  disabled={saving}
                 />
               )}
             </View>

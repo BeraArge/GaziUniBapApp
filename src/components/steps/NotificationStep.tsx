@@ -7,9 +7,11 @@ import Button from '../ui/Button';
 type Props = {
   message: string;
   onNext: () => void;
+  buttonTitle?: string;
+  disabled?: boolean;
 };
 
-export default function NotificationStep({ message, onNext }: Props) {
+export default function NotificationStep({ message, onNext, buttonTitle = 'Devam Et', disabled = false }: Props) {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
@@ -27,7 +29,7 @@ export default function NotificationStep({ message, onNext }: Props) {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Button title="Devam Et" onPress={onNext} />
+        <Button title={buttonTitle} onPress={onNext} disabled={disabled} />
       </View>
     </SafeAreaView>
   );

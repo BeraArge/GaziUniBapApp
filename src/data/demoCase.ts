@@ -26,10 +26,7 @@ export const demoCase: Case = {
     'Sorulara doğru yanıt verdiğinizde, bunun doğru bir cevap olduğu ekranda belirtilecek ve ' +
     'ilgili sorudan tam puan alacaksınız. Simülasyon uygulamasında bir sahne bitmeden ' +
     'diğerine geçilemeyecektir.\n\n' +
-    'Tüm simülasyonu bir kez uygulayacaksınız.\n\n' +
-    'Simülasyon sahneleri ve soruları tüm aşamalarıyla tamamlamadan çıkarsanız ilerlemeniz ' +
-    'kaydedilmeyecektir. Bu nedenle, lütfen tüm sahneleri bitirmeden simülasyondan ' +
-    'ayrılmayınız.',
+    'Tüm simülasyonu bir kez uygulayacaksınız.',
   steps: [
     // 1) Vaka Tanımı + hasta öyküsü
     {
