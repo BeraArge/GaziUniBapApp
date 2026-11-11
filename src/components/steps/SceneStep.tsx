@@ -204,7 +204,7 @@ export default function SceneStep({
         {phase === 'notification' && (
           <NotificationStep
             message={step.bildirimMetni ?? ''}
-            buttonTitle={step.id === 47 && step.order === 27 ? 'Bitir ve Sonucu Gör' : 'Devam Et'}
+            buttonTitle={step.id === 47 && step.order === 28 ? 'Bitir ve Sonucu Gör' : 'Devam Et'}
             disabled={saving}
             onNext={() => {
               if (saving) return;

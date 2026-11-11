@@ -11,13 +11,16 @@ import {useAuth} from '../store/useAuth';
 import {colors, spacing} from '../theme/colors';
 
 const INTRO = `Sevgili öğrenciler,
-Az önce tamamladığınız video tabanlı interaktif simülasyon, sizlerin hasta güvenliği ile ilgili sahneleri izleyerek, hasta güvenliği yetkinliklerinizi geliştirmek amacıyla hazırlanmıştır. Şimdi başlayacağımız çözümleme oturumu, bu sürecin en önemli ve en öğretici aşamasıdır.
 
-Bu oturumda amacımız; kim neyi doğru ya da yanlış yaptığını bulmak değil, yaşanan durumları birlikte düşünmek, anlamlandırmak ve gerçek klinik uygulamalara nasıl daha güvenli şekilde aktarabileceğimizi tartışmaktır. Burada yapılacak paylaşımlar notlandırma amacıyla kullanılmayacaktır. Her görüş ve deneyim, öğrenme sürecinin değerli bir parçasıdır.
+Simülasyon sırasında karşılaştığınız olaylar; ilaç güvenliği, kan transfüzyonu güvenliği, enfeksiyonların önlenmesi, hasta düşmelerinin önlenmesi, hasta değerlendirmeleri, güvenli hasta devri, ekip içi iletişim, kayıt süreçleri ve hataların bildirilmesi gibi gerçek klinik uygulamalarda sıklıkla karşılaşılan hasta güvenliği durumlarını yansıtmaktadır. Şimdi yaşadığınız bu deneyimleri ekrana gelecek soruları yanıtlayarak bizimle paylaşabilirsiniz.`;
 
-Simülasyon sırasında karşılaştığınız olaylar; ilaç uygulamaları, kan transfüzyonu, kayıt süreçleri, hasta izlemi, ekip içi iletişim ve hata bildirimleri gibi gerçek klinik ortamlarda sıklıkla karşılaşılan hasta güvenliği durumlarını yansıtmaktadır. Bu nedenle, hissettiğiniz kararsızlıklar, zorlanmalar ya da fark ettiğiniz eksiklikler son derece doğaldır.
+const CLOSING = `Sevgili öğrenciler,
 
-Çözümleme oturumu boyunca sizlerden beklediğimiz düşüncelerinizi açıkça ifade etmenizdir. Şimdi, simülasyon sürecine birlikte geri dönerek deneyimlerimizi paylaşmaya başlayabiliriz.`;
+Video tabanlı simülasyon uygulaması tamamlanmıştır. Bir sonraki aşamada, simülasyon deneyimlerinizi değerlendireceğiniz yüz yüze çözümleme oturumuna geçilecektir.
+
+Teşekkür ederiz.
+
+Araştırma Ekibi.`;
 
 type Phase = {
   asama: string; // API'ye gönderilecek aşama adı
@@ -28,34 +31,19 @@ type Phase = {
 
 const PHASES: Phase[] = [
   {
-    asama: 'Aşama 1',
+    asama: 'Tanımlama',
     label: '1. AŞAMA',
-    title: 'Tepki (Duygusal Farkındalık)',
+    title: 'Tanımlama Aşaması',
+    questions: [
+      'İzlediğiniz simülasyon senaryosunda dikkatinizi çeken olay veya durumu kısaca belirtiniz.',
+    ],
+  },
+  {
+    asama: 'Reaksiyon',
+    label: '2. AŞAMA',
+    title: 'Reaksiyon Aşaması',
     questions: [
       'Simülasyon senaryosunu izlerken neler hissettiniz?',
-      'En çok zorlandığınız ya da sizi düşündüren sahne hangisiydi?',
-      '“Burada Merve Hemşire’nin yerinde olsaydım nasıl yaklaşırdım?” diye düşündüğünüz anlar oldu mu?',
-    ],
-  },
-  {
-    asama: 'Aşama 2',
-    label: '2. AŞAMA',
-    title: 'Analiz (Bilişsel ve Klinik Çözümleme)',
-    questions: [
-      'Bu senaryoda hasta güvenliğini en çok tehdit eden durum sizce neydi?',
-      'Hata ya da eksiklik fark edildiğinde hemşirenin yaklaşımı hasta güvenliği kültürüyle uyumlu muydu?',
-      'Bu durumun hasta açısından kısa ve uzun vadede ne tür sonuçlara yol açabileceğini düşünüyorsunuz? Eğer fark edilmeseydi süreç nasıl ilerleyebilirdi?',
-      'İzlediğiniz simülasyon senaryosunda dikkatinizi çeken olay veya durumu kısaca belirtiniz.'
-    ],
-  },
-  {
-    asama: 'Aşama 3',
-    label: '3. AŞAMA',
-    title: 'Özetleme',
-    questions: [
-      'Bu simülasyondan sonra klinik uygulamada neyi farklı yapacağınızı düşünüyorsunuz?',
-      'Hasta güvenliğini desteklemek için bireysel olarak ve ekip düzeyinde neler yapılabilir?',
-      'Bu simülasyon, hasta güvenliğine bakış açınızda nasıl bir farkındalık yarattı?',
     ],
   },
 ];
@@ -131,7 +119,7 @@ export default function DebriefingScreen({
             {phase.questions.map((q, i) => (
               <View key={i} style={styles.questionBlock}>
                 <Text style={styles.questionText}>
-                  {i + 1}. {q}
+                  {phaseIndex + 1}. {q}
                 </Text>
                 <TextField
                   value={answers[`${phaseIndex}-${i}`] ?? ''}
@@ -151,6 +139,12 @@ export default function DebriefingScreen({
           </Card>
         );
       })}
+
+      {PHASES.every((_, index) => savedPhases[index]) && (
+        <Card>
+          <Text style={styles.body}>{CLOSING}</Text>
+        </Card>
+      )}
 
       <Button
         title="Sonuçlara Dön"
