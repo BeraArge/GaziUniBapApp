@@ -85,19 +85,19 @@ export default function RegisterScreen({
         value={userName}
         onChangeText={setUserName}
         autoCapitalize="none"
-        placeholder="örn. esracabas"
+        placeholder="örn. ogrenci"
       />
       <TextField
         label="Ad"
         value={name}
         onChangeText={setName}
-        placeholder="Esra"
+        placeholder="isim"
       />
       <TextField
         label="Soyad"
         value={surname}
         onChangeText={setSurname}
-        placeholder="Çabaş"
+        placeholder="soyisim"
       />
       <TextField
         label="Öğrenci No"
